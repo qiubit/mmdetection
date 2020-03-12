@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import os
 
 import mmcv
 import numpy as np
@@ -15,6 +16,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super(BaseDetector, self).__init__()
         self.fp16_enabled = False
+        self.saved_image_id = 0
 
     @property
     def with_neck(self):
@@ -138,7 +140,7 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
         else:
             return self.forward_test(img, img_meta, **kwargs)
 
-    def show_result(self, data, result, dataset=None, score_thr=0.3):
+    def show_result(self, data, result, dataset=None, score_thr=0.3, save_dir=None, show=True):
         if isinstance(result, tuple):
             bbox_result, segm_result = result
         else:
@@ -180,9 +182,17 @@ class BaseDetector(nn.Module, metaclass=ABCMeta):
                 for i, bbox in enumerate(bbox_result)
             ]
             labels = np.concatenate(labels)
+            # get save path
+            save_path = None
+            if save_dir is not None:
+                self.saved_image_id += 1
+                save_path = os.path.join(save_dir, '{}.jpg'.format(self.saved_image_id))
+            # show bboxes
             mmcv.imshow_det_bboxes(
                 img_show,
                 bboxes,
                 labels,
                 class_names=class_names,
-                score_thr=score_thr)
+                score_thr=score_thr,
+                show=show,
+                out_file=save_path)

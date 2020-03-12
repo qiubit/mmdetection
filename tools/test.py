@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 
 import mmcv
 import torch
@@ -91,6 +92,7 @@ def parse_args():
         default='none',
         help='job launcher')
     parser.add_argument('--local_rank', type=int, default=0)
+    parser.add_argument('--img_out', help='directory to save image results')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -110,6 +112,13 @@ def main():
 
     if args.out is not None and not args.out.endswith(('.pkl', '.pickle')):
         raise ValueError('The output file must be a pkl file.')
+
+    if args.img_out is not None:
+        img_out = args.img_out
+        if os.path.exists(img_out) and not os.path.isdir(img_out):
+            raise ValueError('--img_out must be a valid directory path')
+        path = Path(img_out)
+        path.mkdir(parents=True, exist_ok=True)
 
     cfg = mmcv.Config.fromfile(args.config)
     # set cudnn_benchmark
@@ -150,7 +159,7 @@ def main():
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = single_gpu_test(model, data_loader, args.show)
+        outputs = single_gpu_test(model, data_loader, args.show, args.img_out)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),

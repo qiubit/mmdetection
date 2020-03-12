@@ -9,18 +9,19 @@ import torch.distributed as dist
 from mmcv.runner import get_dist_info
 
 
-def single_gpu_test(model, data_loader, show=False):
+def single_gpu_test(model, data_loader, show=False, save_dir=None):
     model.eval()
     results = []
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
+    should_rescale = (not show) and (save_dir is None)
     for i, data in enumerate(data_loader):
         with torch.no_grad():
-            result = model(return_loss=False, rescale=not show, **data)
+            result = model(return_loss=False, rescale=should_rescale, **data)
         results.append(result)
 
-        if show:
-            model.module.show_result(data, result)
+        if show or save_dir is not None:
+            model.module.show_result(data, result, save_dir=save_dir, show=show)
 
         batch_size = data['img'][0].size(0)
         for _ in range(batch_size):
